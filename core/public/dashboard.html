@@ -14,6 +14,7 @@
         <button id="shopButton">Shop</button>
         <button onclick="openTab('library')">Library</button>
         <button id="profileButton">Profile</button>
+        <button id="friendsButton">Friends</button>
     </div>
     <div id="greeting">
         <h1>Welcome to the Dashboard</h1>
@@ -32,6 +33,16 @@
     <div id="profile" class="tab">
         <h2>Profile</h2>
         <div id="profileContent"></div>
+    </div>
+
+    <div id="friends" class="tab">
+        <h2>Friends</h2>
+        <div id="friendsContent"></div>
+        <h3>Add Friend</h3>
+        <form id="addFriendForm">
+            <input type="text" id="friendUsername" placeholder="Friend's Username" required>
+            <input type="submit" value="Add Friend">
+        </form>
     </div>
 </body>
 </html>

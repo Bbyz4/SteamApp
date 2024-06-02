@@ -151,6 +151,131 @@ app.post('/get-all-games', async (req, res) => {
     }
 });
 
+
+app.post('/get-friends', async (req, res) => {
+    const { username } = req.body;
+    try {
+        const query = {
+            text: `
+                    SELECT u2.nazwa AS username, z.data_zawarcia AS date_of_friendship
+                    FROM znajomosci z 
+                    JOIN uzytkownicy u1 ON z.id_uzytkownika_1 = u1.id_uzytkownika 
+                    JOIN uzytkownicy u2 ON z.id_uzytkownika_2 = u2.id_uzytkownika 
+                    WHERE u1.nazwa = $1
+                    AND z.id_znajomosci NOT IN
+                    (
+                        SELECT znajomosci_zerwania.id_znajomosci
+                        FROM znajomosci_zerwania
+                    )
+                    UNION
+                    SELECT u1.nazwa AS username, z.data_zawarcia AS date_of_friendship
+                    FROM znajomosci z 
+                    JOIN uzytkownicy u1 ON z.id_uzytkownika_1 = u1.id_uzytkownika 
+                    JOIN uzytkownicy u2 ON z.id_uzytkownika_2 = u2.id_uzytkownika 
+                    WHERE u2.nazwa = $1
+                    AND z.id_znajomosci NOT IN
+                    (
+                        SELECT znajomosci_zerwania.id_znajomosci
+                        FROM znajomosci_zerwania
+                    )` 
+                    ,
+            values: [username],
+        };
+        const result = await pool.query(query);
+        res.json(result.rows);
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+
+app.post('/add-friend', async (req, res) => {
+    const { username, friendUsername } = req.body;
+    try {
+        const userQuery = {
+            text: 'SELECT id_uzytkownika FROM uzytkownicy WHERE nazwa = $1',
+            values: [username],
+        };
+        const friendQuery = {
+            text: 'SELECT id_uzytkownika FROM uzytkownicy WHERE nazwa = $1',
+            values: [friendUsername],
+        };
+
+        const userResult = await pool.query(userQuery);
+        const friendResult = await pool.query(friendQuery);
+
+        if (userResult.rowCount === 1 && friendResult.rowCount === 1) {
+            const userId = userResult.rows[0].id_uzytkownika;
+            const friendId = friendResult.rows[0].id_uzytkownika;
+
+            const insertFriendQuery = {
+                text: 'INSERT INTO znajomosci (id_uzytkownika_1, id_uzytkownika_2, data_zawarcia) VALUES ($1, $2, CURRENT_DATE)',
+                values: [userId, friendId],
+            };
+
+            await pool.query(insertFriendQuery);
+            res.sendStatus(201);
+        } else {
+            res.status(404).json({ error: 'User not found' });
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+
+app.post('/remove-friend', async (req, res) => {
+    const { username, friendUsername } = req.body;
+    try {
+        const userQuery = {
+            text: 'SELECT id_uzytkownika FROM uzytkownicy WHERE nazwa = $1',
+            values: [username],
+        };
+        const friendQuery = {
+            text: 'SELECT id_uzytkownika FROM uzytkownicy WHERE nazwa = $1',
+            values: [friendUsername],
+        };
+
+        const userResult = await pool.query(userQuery);
+        const friendResult = await pool.query(friendQuery);
+
+        if (userResult.rowCount === 1 && friendResult.rowCount === 1) {
+            const userId = userResult.rows[0].id_uzytkownika;
+            const friendId = friendResult.rows[0].id_uzytkownika;
+            
+            const friendIdQuery = {
+                text: `
+                SELECT id_znajomosci
+                FROM znajomosci 
+                WHERE (id_uzytkownika_1 = $1 AND id_uzytkownika_2 = $2) 
+                   OR (id_uzytkownika_1 = $2 AND id_uzytkownika_2 = $1)
+                ORDER BY id_znajomosci DESC
+                LIMIT 1`,
+                values: [userId, friendId],
+            };
+
+            const friendIdResult = await pool.query(friendIdQuery);
+
+            const friendshipID = friendIdResult.rows[0].id_znajomosci;
+
+            const deleteFriendQuery = {
+                text: `INSERT INTO znajomosci_zerwania (id_znajomosci, zrywajacy, powod, data_zerwania) VALUES ($1, $2, 'XDDD', CURRENT_DATE)`,
+                values: [friendshipID, userId],
+            };
+
+            await pool.query(deleteFriendQuery);
+            res.sendStatus(200);
+        } else {
+            res.status(404).json({ error: 'User not found' });
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 app.listen(3000, () => {
     console.log('Server is running on port 3000');
 });
