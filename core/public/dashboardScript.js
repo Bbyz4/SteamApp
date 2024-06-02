@@ -54,6 +54,53 @@ function displayUserInfo(userInfo) {
     `;
 }
 
+//BIBLIOTEKA
+document.getElementById('libraryButton').addEventListener('click', function() {
+    console.log("AA");
+    openTab('library');
+    fetchLibInfo();
+});
+
+function fetchLibInfo() {
+    console.log("BB");
+    const username = localStorage.getItem('username');
+    fetch('/get-library-games', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({username: username})
+    })
+    .then(response => {
+        if (response.ok) {
+            return response.json();
+        } else {
+            throw new Error('Failed to fetch library information');
+        }
+    })
+    .then(userInfo => {
+        displayUserLibrary(userInfo.games);
+    })
+    .catch(error => {
+        console.error('Error:', error);
+    });
+}
+
+function displayUserLibrary(games) {
+    console.log("CC");
+    const shopTab = document.getElementById('libContent');
+    shopTab.innerHTML = "";
+    const gameList = document.createElement('ul');
+
+    games.forEach(game => {
+        const listItem = document.createElement('li');
+        listItem.textContent = `${game.name}: ${game.description}`;
+        gameList.appendChild(listItem);
+    });
+
+    shopTab.appendChild(gameList);
+}
+
 //SKLEP
 document.getElementById('shopButton').addEventListener('click', function() {
     openTab('shop');

@@ -151,6 +151,47 @@ app.post('/get-all-games', async (req, res) => {
     }
 });
 
+app.post('/get-library-games', async (req, res) => {
+    const {username} = req.body;
+    try
+    {
+        const usQuery = {
+            text: 'SELECT * FROM uzytkownicy WHERE nazwa = $1',
+            values: [username],
+        };
+
+        const result = await pool.query(usQuery);
+
+        const userID = result.rows[0].id_uzytkownika
+
+        const query = {
+            text: `SELECT gry.nazwa, gry.opis
+            FROM zakupy_gier
+            JOIN gry ON gry.id_gry = zakupy_gier.gra
+            WHERE zakupy_gier.otrzymujacy = $1
+            AND zakupy_gier.id_zakupu NOT IN
+            (
+                SELECT zwroty.id_zakupu
+                FROM zwroty
+            )`,
+            values: [userID]
+        }
+
+        const result2 = await pool.query(query);
+
+        const userGames = result2.rows.map(game => ({
+            name: game.nazwa,
+            description: game.opis
+        }));
+
+        res.json({games: userGames});
+    }
+    catch (error)
+    {
+        console.error('Error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
 
 app.post('/get-friends', async (req, res) => {
     const { username } = req.body;
@@ -275,6 +316,7 @@ app.post('/remove-friend', async (req, res) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 });
+
 
 app.listen(3000, () => {
     console.log('Server is running on port 3000');
