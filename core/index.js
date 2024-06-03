@@ -28,7 +28,7 @@ app.post('/signup', async (req, res) => {
         await pool.query('ALTER TABLE uzytkownicy DROP CONSTRAINT IF EXISTS sprawdz_czy_user_ma_ustawiony_poczatkowy_kraj');
 
         const insertUserQuery = {
-            text: 'INSERT INTO uzytkownicy (nazwa, email, data_zalozenia, haslo, imie, nazwisko, data_urodzenia) VALUES ($1, $3, CURRENT_DATE, $2, $4, $5, $6) RETURNING id_uzytkownika',
+            text: 'INSERT INTO uzytkownicy (nazwa, email, data_zalozenia, haslo, imie, nazwisko, data_urodzenia) VALUES ($1, $3, NOW(), $2, $4, $5, $6) RETURNING id_uzytkownika',
             values: [username, password, email, name, surname, date_of_birth],
         };
 
@@ -46,8 +46,8 @@ app.post('/signup', async (req, res) => {
         const countryCode = countryQueryResult.rows[0].kod_kraju;
 
         const insertCountryQuery = {
-            text: 'INSERT INTO kraje_uzytkownicy (id_uzytkownika, kod_kraju, data_zmiany) VALUES ($1, $2, $3)',
-            values: [userId, countryCode, new Date()], 
+            text: 'INSERT INTO kraje_uzytkownicy (id_uzytkownika, kod_kraju, data_zmiany) VALUES ($1, $2, NOW())',
+            values: [userId, countryCode], 
         };
 
         await pool.query(insertCountryQuery);
@@ -251,7 +251,7 @@ app.post('/add-friend', async (req, res) => {
             const friendId = friendResult.rows[0].id_uzytkownika;
 
             const insertFriendQuery = {
-                text: 'INSERT INTO znajomosci (id_uzytkownika_1, id_uzytkownika_2, data_zawarcia) VALUES ($1, $2, CURRENT_DATE)',
+                text: 'INSERT INTO znajomosci (id_uzytkownika_1, id_uzytkownika_2, data_zawarcia) VALUES ($1, $2, NOW())',
                 values: [userId, friendId],
             };
 
@@ -302,7 +302,7 @@ app.post('/remove-friend', async (req, res) => {
             const friendshipID = friendIdResult.rows[0].id_znajomosci;
 
             const deleteFriendQuery = {
-                text: `INSERT INTO znajomosci_zerwania (id_znajomosci, zrywajacy, powod, data_zerwania) VALUES ($1, $2, 'XDDD', CURRENT_DATE)`,
+                text: `INSERT INTO znajomosci_zerwania (id_znajomosci, zrywajacy, powod, data_zerwania) VALUES ($1, $2, 'XDDD', NOW())`,
                 values: [friendshipID, userId],
             };
 
