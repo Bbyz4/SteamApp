@@ -1,3 +1,24 @@
+
+const countryInput = document.getElementById('new-country');
+
+fetch('/get-all-countries', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+    }
+})
+.then(response => response.json())
+.then(methods => {
+
+    let innerH = "";
+    methods.metody.forEach(method => {
+        innerH += `<option value= "${method.nazwa}">${method.nazwa}</option>`;
+    });
+
+    countryInput.innerHTML = innerH;
+})
+.catch(error => console.error('Error:', error));
+
 document.getElementById('signup-form').addEventListener('submit', function(event) {
     event.preventDefault(); 
 

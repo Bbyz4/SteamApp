@@ -3,7 +3,7 @@ const bodyParser = require('body-parser');
 const { Pool } = require('pg');
 const path = require('path');
 
-const crypto = require('crypto');
+//const crypto = require('crypto');
 const bcrypt = require('bcrypt');
 
 const app = express();
@@ -25,6 +25,14 @@ app.post('/signup', async (req, res) => {
     const { username, password, email, name, surname, date_of_birth, country } = req.body;
 
     try {
+
+        const beginQuery = {
+            text: `BEGIN`
+        };
+
+        const AAAAAAAAAAAAAAAAA = await pool.query(beginQuery);
+
+
         await pool.query('ALTER TABLE uzytkownicy DROP CONSTRAINT IF EXISTS sprawdz_czy_user_ma_ustawiony_poczatkowy_kraj');
 
         const insertUserQuery = {
@@ -54,9 +62,21 @@ app.post('/signup', async (req, res) => {
 
         await pool.query('ALTER TABLE uzytkownicy ADD CONSTRAINT sprawdz_czy_user_ma_ustawiony_poczatkowy_kraj CHECK(sprawdz_czy_user_ma_ustawiony_poczatkowy_kraj(id_uzytkownika, data_zalozenia))');
 
+        const commitQuery = {
+            text: `COMMIT`
+        };
+
+        const AAAAAAAAAAAABAAAAA = await pool.query(commitQuery);
+
         res.sendStatus(201);
     } catch (error) {
-        await pool.query('ALTER TABLE uzytkownicy ADD CONSTRAINT sprawdz_czy_user_ma_ustawiony_poczatkowy_kraj CHECK(sprawdz_czy_user_ma_ustawiony_poczatkowy_kraj(id_uzytkownika, data_zalozenia))');
+
+        const commitQuery = {
+            text: `COMMIT`
+        };
+
+        const AAAAAAAAAAAABAAAAA = await pool.query(commitQuery);
+
         console.error('Error:', error);
         res.sendStatus(500);
     }
@@ -98,6 +118,71 @@ app.post('/login', async (req, res) => {
         res.sendStatus(500);
     }
 });
+
+app.post('/search-game', async (req, res) => {
+    console.log('Search game request received:', req.body); // Logowanie
+
+    const { gameName, username } = req.body;
+
+    try {
+        const query = {
+            text: 'SELECT * FROM gry WHERE nazwa = $1',
+            values: [gameName],
+        };
+        console.log(query);        
+        const result = await pool.query(query);
+        console.log(result);
+        if (result.rowCount === 1) {
+            console.log('Game found:', result.rows[0]); // Logowanie
+            const game1 = result.rows[0];
+
+            const usQuery = {
+                text: 'SELECT * FROM uzytkownicy WHERE nazwa = $1',
+                values: [username],
+            };
+    
+            const resultAAA = await pool.query(usQuery);
+    
+            const userID = resultAAA.rows[0].id_uzytkownika
+
+            const query2 = {
+                text: `SELECT ROUND(oblicz_koszt_gry_w_danej_walucie($2, jaka_walute_mial_dany_kraj(jaki_kraj_mial_dany_user($1::INTEGER, NOW()::timestamp), NOW()::timestamp), NOW()::timestamp) * zwroc_kurs_waluty_na_dolary(jaka_walute_mial_dany_kraj(jaki_kraj_mial_dany_user($1::INTEGER, NOW()::timestamp), NOW()::timestamp), NOW()::timestamp),2) AS ccc`,
+                values: [userID, game1.id_gry]
+            }
+
+            const resultBBB = await pool.query(query2);
+
+            const gamePrice = resultBBB.rows[0].ccc;
+
+            const query3 = {
+                text: `
+                    SELECT jaka_walute_mial_dany_kraj(jaki_kraj_mial_dany_user($1::INTEGER, NOW()::timestamp), NOW()::timestamp) AS bbb`,
+                values: [userID],
+            };
+
+            const result3 = await pool.query(query3);
+
+            const currency = result3.rows[0].bbb;
+
+            console.log("CURRENCY:", gamePrice);
+
+            res.json({
+                name: game1.nazwa,
+                description: game1.opis,
+                id_gry: game1.id_gry,
+                cena: gamePrice,
+                waluta: currency
+            });
+        } else {
+            console.log('Game not found');
+            res.status(404).json({ error: 'Game not found' });
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 
 app.post('/user-info', async (req, res) => {
     const { username } = req.body; 
@@ -142,6 +227,85 @@ app.post('/get-all-games', async (req, res) => {
                 description: game.opis
             }));
             res.json({ games: games });
+        } else {
+            res.status(404).json({ error: 'No games found' });
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.post('/get-all-payment-methods', async (req, res) => {
+    try {
+        const query = {
+            text: 'SELECT pelna_nazwa, id_metody FROM metody_platnosci',
+        };
+
+        const result = await pool.query(query);
+
+        if (result.rowCount > 0) {
+            const games = result.rows.map(game => ({
+                nazwa: game.pelna_nazwa,
+                ident: game.id_metody
+            }));
+            res.json({ metody: games });
+        } else {
+            res.status(404).json({ error: 'No games found' });
+        }
+
+
+
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).json({error: 'Internal server error' });
+    }
+});
+
+app.post('/get-all-countries', async (req, res) => {
+    try {
+        const query = {
+            text: 'SELECT nazwa FROM kraje',
+        };
+
+        const result = await pool.query(query);
+
+        if (result.rowCount > 0) {
+            const games = result.rows.map(game => ({
+                nazwa: game.nazwa
+            }));
+            res.json({ metody: games });
+        } else {
+            res.status(404).json({ error: 'No games found' });
+        }
+
+
+
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).json({error: 'Internal server error' });
+    }
+});
+
+app.post('/get-reviews', async (req, res) => {
+    const {gameName} = req.body;
+    try {
+
+        const query = {
+            text: 'select u.nazwa, r.ocena, r.opis from recenzje r join uzytkownicy u on r.recenzent = u.id_uzytkownika join gry g on r.gra = g.id_gry where g.nazwa = $1',
+            values: [gameName],
+        };
+
+        const result = await pool.query(query);
+        //console.log(result);
+        if (result.rowCount >= 0) {
+            const reviews = result.rows.map(review => ({
+                nazwa: review.nazwa,
+                ocena: review.ocena,
+                opis: review.opis
+            }));
+            //console.log(reviews);
+            res.json({ reviews : reviews });
         } else {
             res.status(404).json({ error: 'No games found' });
         }
@@ -317,7 +481,250 @@ app.post('/remove-friend', async (req, res) => {
     }
 });
 
+app.post('/get-achievements', async (req, res) => {
+    const { username } = req.body;
+
+    if (!username) {
+        return res.status(400).json({ error: 'Username is required' });
+    }
+
+    try {
+        const usQuery = {
+            text: 'SELECT * FROM uzytkownicy WHERE nazwa = $1',
+            values: [username],
+        };
+
+        const result1 = await pool.query(usQuery);
+
+        if (result1.rowCount === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        const userID = result1.rows[0].id_uzytkownika;
+
+        const query = {
+            text: `
+                SELECT o.nazwa, o.opis
+                FROM osiagniecia_uzytkownikow ou
+                JOIN osiagniecia o USING (id_osiagniecia)
+                WHERE ou.id_uzytkownika = $1`,
+            values: [userID],
+        };
+
+        const result = await pool.query(query);
+        console.log('Achievements query result:', result.rows); // Dodaj to, aby zobaczyć wynik zapytania
+
+
+            const achievements = result.rows.map(achievement => ({
+                name: achievement.nazwa,
+                description: achievement.opis,
+            }));
+            res.json({ achievements });
+
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+
+
+app.post('/change-country', async (req, res) => {
+    const { username, country } = req.body;
+
+    try {
+        const userQuery = {
+            text: 'SELECT id_uzytkownika FROM uzytkownicy WHERE nazwa = $1',
+            values: [username],
+        };
+        const userResult = await pool.query(userQuery);
+
+        if (userResult.rowCount === 1) {
+            const userId = userResult.rows[0].id_uzytkownika;
+
+            const countryCodeQuery = {
+                text: 'SELECT kod_kraju FROM kraje WHERE nazwa = $1',
+                values: [country],
+            };
+            const countryResult = await pool.query(countryCodeQuery);
+
+            if (countryResult.rowCount === 1) {
+                const countryCode = countryResult.rows[0].kod_kraju;
+
+                const updateCountryQuery = {
+                    text: 'INSERT INTO kraje_uzytkownicy (id_uzytkownika, kod_kraju, data_zmiany) VALUES ($1, $2, NOW() )',
+                    values: [userId, countryCode],
+                };
+                await pool.query(updateCountryQuery);
+
+                res.sendStatus(200);
+            } else {
+                res.status(404).json({ error: 'Country not found' });
+            }
+        } else {
+            res.status(404).json({ error: 'User not found' });
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.post('/delete-account', async (req, res) => {
+    const { username } = req.body;
+
+    try {
+        const usQuery = {
+            text: 'SELECT * FROM uzytkownicy WHERE nazwa = $1',
+            values: [username],
+        };
+
+        const result1 = await pool.query(usQuery);
+
+        if (result1.rowCount === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        const userID = result1.rows[0].id_uzytkownika;
+
+            const insertDeletedUserQuery = {
+                text: `INSERT INTO usuniete_konta (id_uzytkownika, usuwajacy, data_usuniecia ) VALUES ($1, 'uzytkownik', NOW() )`,
+                values: [userID],
+            };
+
+            await pool.query(insertDeletedUserQuery);
+
+            res.sendStatus(200);
+        } 
+         catch (error) {
+        console.error('Error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+
+
+app.post('/add-review', async (req, res) => {
+    const { username, gameName, review, rating } = req.body;
+
+    try {
+        const userQuery = {
+            text: 'SELECT id_uzytkownika FROM uzytkownicy WHERE nazwa = $1',
+            values: [username],
+        };
+        const gameQuery = {
+            text: 'SELECT id_gry FROM gry WHERE nazwa = $1',
+            values: [gameName],
+        };
+
+        const userResult = await pool.query(userQuery);
+        const gameResult = await pool.query(gameQuery);
+
+        if (userResult.rowCount === 1 && gameResult.rowCount === 1) {
+            const userId = userResult.rows[0].id_uzytkownika;
+            const gameId = gameResult.rows[0].id_gry;
+
+            const insertReviewQuery = {
+                text: 'INSERT INTO recenzje (recenzent, gra, ocena, opis, data_wystawienia) VALUES ($1, $2, $3, $4, NOW())',
+                values: [userId, gameId, rating, review],
+            };
+
+            await pool.query(insertReviewQuery);
+            res.sendStatus(201);
+        } else {
+            res.status(404).json({ error: 'User or game not found' });
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.post('/purchase-game', async (req, res) => {
+    const { username, gameId, method } = req.body;
+
+    try {
+        const userQuery = {
+            text: 'SELECT id_uzytkownika FROM uzytkownicy WHERE nazwa = $1',
+            values: [username],
+        };
+
+        const userResult = await pool.query(userQuery);
+        console.log(userResult);
+        if (userResult.rowCount === 1) {
+            const userId = userResult.rows[0].id_uzytkownika;
+
+            const insertPurchaseQuery = {
+                text: 'INSERT INTO zakupy_gier (kupujacy, otrzymujacy, gra, metoda_platnosci, data_zakupu) VALUES ($2, $2, $1, $3, NOW())',
+                values: [gameId, userId, method],
+            };
+
+            await pool.query(insertPurchaseQuery);
+            res.sendStatus(201);
+        } else {
+            res.status(404).json({ error: 'User not found' });
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.post('/users-money', async (req, res) => {
+    const {username} = req.body;
+
+    try {
+        const userQuery = {
+            text: 'SELECT id_uzytkownika FROM uzytkownicy WHERE nazwa = $1',
+            values: [username],
+        };
+
+        const userResult = await pool.query(userQuery);
+        console.log(userResult);
+        if (userResult.rowCount === 1) {
+            const userId = userResult.rows[0].id_uzytkownika;
+
+            const query = {
+                text: `
+                    SELECT oblicz_saldo_uzytkownika($1) AS aaa`,
+                values: [userId],
+            };
+    
+            const result = await pool.query(query);
+            console.log('Achievements query result:', result.rows);
+    
+    
+            const cash = result.rows.map(achievement => ({
+                val: achievement.aaa
+            }));
+
+            const query2 = {
+                text: `
+                    SELECT jaka_walute_mial_dany_kraj(jaki_kraj_mial_dany_user($1::INTEGER, NOW()::timestamp), NOW()::timestamp) AS bbb`,
+                values: [userId],
+            };
+
+            const result2 = await pool.query(query2);
+
+            const currency = result2.rows.map(achievement => ({
+                val: achievement.bbb
+            }));
+
+            console.log('Achievements query result:', result2.rows);
+
+                res.json({ cash, currency });
+        } else {
+            res.status(404).json({ error: 'User not found' });
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+})
+
+
 
 app.listen(3000, () => {
     console.log('Server is running on port 3000');
 });
+

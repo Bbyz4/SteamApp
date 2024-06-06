@@ -15,6 +15,7 @@
         <button id="libraryButton">Library</button>
         <button id="profileButton">Profile</button>
         <button id="friendsButton">Friends</button>
+        <button id="achievementsButton">Achievements</button>
     </div>
     <div id="greeting">
         <h1>Welcome to the Dashboard</h1>
@@ -23,7 +24,47 @@
 
     <div id="shop" class="tab">
         <h2>Shop</h2>
-        <div id="shopContent"></div>
+        <h3 id="usersMoney"></h3>
+        <div id="shopContent">
+            <h3>Search for a game</h3>
+            <form id="searchGameForm">
+                <input type="text" id="gameSearchInput" placeholder="Enter game name" required>
+                <input type="submit" value="Search">
+            </form>
+            <div id="gameDetails" style="display: none;"></div>
+            <div id="addReview" style="display: none;">
+                <h3>Add a Review</h3>
+                <form id="addReviewForm">
+                    <textarea id="reviewText" placeholder="Write your review here" required></textarea>
+                    <label for="reviewRating">Rating:</label>
+                    <select id="reviewRating" required>
+                        <option value="">Select rating</option>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                    </select>
+                    <input type="submit" value="Submit Review">
+                </form>
+            </div>
+            <div id="reviews" style="margin-top: 20px;">
+                <h3>Reviews</h3>
+                <div id="allReviewList"></div>
+            </div>
+            <div id="purchaseGame" style="display: none;">
+                <form id="purchaseForm">
+                    <label for="payMethod">Choose a game:</label>
+                    <select id="payMethod" name="payMethod">
+                    </select>
+                    <button id="purchaseButton">Purchase Game</button>
+                </form>
+            </div>
+        </div>
+        <div id="allGamesList" style="margin-top: 20px;">
+            <h3>All Games</h3>
+            <div id="allGames"></div>
+        </div>
     </div>
 
     <div id="library" class="tab">
@@ -34,6 +75,14 @@
     <div id="profile" class="tab">
         <h2>Profile</h2>
         <div id="profileContent"></div>
+        <h3>Change Country</h3>
+        <form id="changeCountryForm">
+            <label for="newCountry">New Country:</label>
+            <select id="newCountry" required>
+            <input type="submit" value="Change Country">
+        </form>
+        <h3>Delete Account</h3>
+        <button id="deleteAccountButton">Delete Account</button>
     </div>
 
     <div id="friends" class="tab">
@@ -44,6 +93,11 @@
             <input type="text" id="friendUsername" placeholder="Friend's Username" required>
             <input type="submit" value="Add Friend">
         </form>
+    </div>
+    
+    <div id="achievements" class="tab">
+        <h2>Achievements</h2>
+        <div id="achievementsContent"></div>
     </div>
 </body>
 </html>
